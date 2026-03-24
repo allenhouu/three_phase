@@ -85,6 +85,7 @@ async function getUser(username)
     return false;
 }
 
+
 async function getAccount(user)
 {
     if (user.access === 1) {
@@ -95,11 +96,13 @@ async function getAccount(user)
     return results;
 }
 
+
 async function getTransactions(accountID)
 {
     const [results, fields] = await connection.query(`SELECT DISTINCT transactions.transactionID, transactions.amount, transactions.fromAcc, transactions.toAcc FROM transactions WHERE transactions.toAcc = "${accountID}" OR transaction.fromAcc = "${accountID}"`);
     return results;
 }
+
 
 async function maxID()
 {
@@ -107,17 +110,20 @@ async function maxID()
     return results[0]["max(id)"];
 }
 
+
 async function maxAccountID()
 {
     const [results, fields] = await connection.query(`SELECT max(accountID) FROM accounts`);
     return results[0]["max(accountID)"];
 }
 
-async function maxTransactions()
+
+async function maxTransactionID()
 {
-    const [results, fields] = await connection.query(`SELECT max(amount) FROM transactions`);
-    return results[0]["max(amount)"];
+    const [results, fields] = await connection.query(`SELECT max(transactionID) FROM transactions`);
+    return results[0]["max(transactionID)"];
 }
+
 
 async function createUser(user, password)
 {
@@ -132,13 +138,6 @@ async function createUser(user, password)
     })
 }
 
-createUser("bigp", "patel").then(r => {
-
-})
-
-createAccount("Checking", 2).then(r =>{
-
-})
 
 async function createAccount(type, ownerID)
 {
@@ -146,17 +145,19 @@ async function createAccount(type, ownerID)
     await connection.query(`INSERT into accounts(accountID, accountType, ownerID) values (${id}, "${type}", ${ownerID})`);
 }
 
+
 async function verifyAccess(user, accountID)
 {
-    const [results, fields] = await connection.query(`SELECT DISTINCT ownerID FROM accounts WHERE ownerID = "${accountID}"`);
-    if(user.access === 1) {
+    const [results, fields] = await connection.query(`SELECT DISTINCT * FROM accounts WHERE accountID = ${accountID}`);
+    if(user.access === 1 ) {
         return true;
     }
-    if (results.length > 1 && user.id === results[0].ownerID) {
+    if (results.length > 0 && user.id === results[0].ownerID) {
         return true;
     }
     return false;
 }
+
 
 async function verifyBalance(accountID, amount)
 {
@@ -167,21 +168,22 @@ async function verifyBalance(accountID, amount)
     return false;
 }
 
-async function transfer(user, accountID1, accountID2, amount)
+
+async function transfer(user, fromID, toID, amount)
 {
-    if (await verifyAccess(user, accountID1) && await verifyAccess(user, accountID2)) {
-        if(await verifyBalance(accountID1, amount)) {
-            const[results1, fields1] = await connection.query(`UPDATE accounts SET balance = accounts.balance + ${amount} WHERE accountID = ${accountID1}`);
-            let newBalAcc1 = results1[0].balance + amount;
+    if (await verifyAccess(user, fromID) && await verifyAccess(user, toID)) {
+        if(await verifyBalance(fromID, amount)) {
+            const[results1, fields1] = await connection.query(`SELECT balance FROM accounts WHERE accountID = ${fromID}`);
+            let newBalFrom = results1[0].balance - amount;
 
-            const[results2, fields2] = await connection.query(`UPDATE accounts SET balance = accounts.balance + ${amount} WHERE accountID = ${accountID2}`);
-            let newBalAcc2 = results2[0].balance + amount;
+            const[results2, fields2] = await connection.query(`SELECT balance FROM accounts WHERE accountID = ${toID}`);
+            let newBalTo = results2[0].balance + amount;
 
-            await connection.query(`UPDATE accounts SET balance = accounts.balance + ${amount} WHERE accountID = ${accountID1}`);
-            await connection.query(`UPDATE accounts SET balance = accounts.balance + ${amount} WHERE accountID = ${accountID2}`);
+            await connection.query(`UPDATE accounts SET balance = ${newBalFrom} WHERE accountID = ${fromID}`);
+            await connection.query(`UPDATE accounts SET balance = ${newBalTo} WHERE accountID = ${toID}`);
 
-            let id = await maxTransactions() + 1;
-            await connection.query(`INSERT into transactions.values(${id}, ${amount}, ${accountID1}, ${accountID2})`)
+            let id = await maxTransactionID() + 1;
+            await connection.query(`INSERT into transactions values(${id}, ${amount}, ${fromID}, ${toID})`)
             return 200;
         }
         else
@@ -191,9 +193,10 @@ async function transfer(user, accountID1, accountID2, amount)
     }
     else
     {
-        return 400;
+        return 403;
     }
 }
+
 
 async function deposit(user, accountID, amount)
 {
@@ -203,8 +206,39 @@ async function deposit(user, accountID, amount)
         let newBal = results[0].balance + amount;
 
         await connection.query(`UPDATE accounts SET balance accounts.balance + ${amount} WHERE accountID = ${accountID}`);
-        let id = await maxTransactions() + 1;
-        await connection.query(`INSERT into transactions.values(${id}, ${amount})`)
+        let id = await maxTransactionID() + 1;
+        await connection.query(`INSERT into transactions values(${id}, ${amount}, null, ${accountID})`);
+        return 200;
+    }
+    else
+    {
+        return 403;
+    }
+}
+
+
+async function withdraw(user, accountID, amount)
+{
+    if (await verifyAccess(user, accountID))
+    {
+        if (await verifyBalance(accountID, amount))
+        {
+            const[results, fields] = await connection.query(`UPDATE accounts SET balance accounts.balance - ${amount} WHERE accountID = ${accountID}`);
+            let newBal = results[0].balance - amount;
+
+            await connection.query(`UPDATE accounts SET balance accounts.balance + ${amount} WHERE accountID = ${accountID}`);
+            let id = await maxTransactionID() + 1;
+            await connection.query(`INSERT into transaction values(${id}, ${amount}, ${accountID}, null)`);
+            return 200;
+        }
+        else
+        {
+            return 400;
+        }
+    }
+    else
+    {
+        return 403;
     }
 }
 app.put("/data", (req, res) => {
@@ -338,12 +372,37 @@ app.post("/transfer", (req, res) => {})
 
 
 
-app.listen(port, () => {
-    console.log(`Server listening on port ${port}`);
-})
+// app.listen(port, () => {
+//     console.log(`Server listening on port ${port}`);
+// })
+
+// getUser("JP").then((user) => {
+//     getAccount(user).then((account) => {
+//         console.log(account);
+//     })
+// })
+//
+// createUser("bigp", "patel").then(r => {
+//
+// })
+//
+// createAccount("Checking", 2).then(r =>{
+//
+// })
+//
+// maxAccountID().then((id) => {
+//     console.log(id);
+// })
 
 getUser("JP").then((user) => {
-    getAccount(user).then((account) => {
-        console.log(account);
+    transfer(user, 4, 3, 50).then((accounts) =>{
+        console.log(accounts);
     })
 })
+
+// getUser("JP").then((user) => {
+//     verifyAccess(user, 4).then((accounts) => {
+//         console.log(accounts);
+//     })
+// })
+
