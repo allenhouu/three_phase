@@ -200,12 +200,12 @@ async function transfer(user, fromID, toID, amount)
 
 async function deposit(user, accountID, amount)
 {
-    if (await verifyAccess(user, accountID))
+    if (user.access === 1)
     {
-        const[results, fields] = await connection.query(`UPDATE accounts SET balance accounts.balance + ${amount} WHERE accountID = ${accountID}`);
+        const[results, fields] = await connection.query(`SELECT balance FROM accounts WHERE accountID = ${accountID}`);
         let newBal = results[0].balance + amount;
 
-        await connection.query(`UPDATE accounts SET balance accounts.balance + ${amount} WHERE accountID = ${accountID}`);
+        await connection.query(`UPDATE accounts SET balance = ${newBal} WHERE accountID = ${accountID}`);
         let id = await maxTransactionID() + 1;
         await connection.query(`INSERT into transactions values(${id}, ${amount}, null, ${accountID})`);
         return 200;
@@ -219,14 +219,14 @@ async function deposit(user, accountID, amount)
 
 async function withdraw(user, accountID, amount)
 {
-    if (await verifyAccess(user, accountID))
+    if (user.access === 1)
     {
         if (await verifyBalance(accountID, amount))
         {
-            const[results, fields] = await connection.query(`UPDATE accounts SET balance accounts.balance - ${amount} WHERE accountID = ${accountID}`);
+            const[results, fields] = await connection.query(`SELECT balance FROM accounts WHERE accountID = ${accountID}`);
             let newBal = results[0].balance - amount;
 
-            await connection.query(`UPDATE accounts SET balance accounts.balance + ${amount} WHERE accountID = ${accountID}`);
+            await connection.query(`UPDATE accounts SET balance =${newBal} WHERE accountID = ${accountID}`);
             let id = await maxTransactionID() + 1;
             await connection.query(`INSERT into transaction values(${id}, ${amount}, ${accountID}, null)`);
             return 200;
@@ -295,6 +295,14 @@ app.put("/data", (req, res) => {
     }
 });
 
+app.get("/public_key", (req, res) => {
+    res.status(200).json({success: "Public key"});
+})
+
+app.get("/login", (req, res) => {
+    const [results, fields] = connection.query(`SELECT FROM accounts`);
+    res.status(200).json(results);
+})
 
 app.get("/data", (req, res) => {
     const {u, p} = req.query;
@@ -360,9 +368,20 @@ app.get("/transactions", (req, res) => {
 
 })
 
-app.post("/login", (req, res) => {})
+app.post("/login", (req, res) => {
+    const { encryptedUsername, encryptedPassword } = req.body;
+    if (!encryptedUsername || !encryptedPassword)
+    {
+        return res.status(400).json({error: "Username or Password required"});
+    }
 
-app.post("/account", (req, res) => {})
+    let decryptedUsername = decryptData(encryptedUsername);
+    let decryptedPassword = decryptData(encryptedPassword);
+
+
+})
+
+app.post("/accounts", (req, res) => {})
 
 app.post("/deposit", (req, res) => {})
 
@@ -372,27 +391,28 @@ app.post("/transfer", (req, res) => {})
 
 
 
-// app.listen(port, () => {
-//     console.log(`Server listening on port ${port}`);
-// })
+app.listen(port, () => {
+    console.log(`Server listening on port ${port}`);
+})
 
-// getUser("JP").then((user) => {
-//     getAccount(user).then((account) => {
-//         console.log(account);
-//     })
-// })
-//
-// createUser("bigp", "patel").then(r => {
-//
-// })
-//
-// createAccount("Checking", 2).then(r =>{
-//
-// })
-//
-// maxAccountID().then((id) => {
-//     console.log(id);
-// })
+/*
+getUser("JP").then((user) => {
+    getAccount(user).then((account) => {
+        console.log(account);
+    })
+})
+
+createUser("bigp", "patel").then(r => {
+
+})
+
+createAccount("Checking", 2).then(r =>{
+
+})
+
+maxAccountID().then((id) => {
+    console.log(id);
+})
 
 getUser("JP").then((user) => {
     transfer(user, 4, 3, 50).then((accounts) =>{
@@ -400,9 +420,17 @@ getUser("JP").then((user) => {
     })
 })
 
-// getUser("JP").then((user) => {
-//     verifyAccess(user, 4).then((accounts) => {
-//         console.log(accounts);
-//     })
-// })
+getUser("JP").then((user) =>{
+    deposit(user, 4, 500).then((accounts) =>{
+        console.log(accounts);
+    })
+})
+
+
+getUser("JP").then((user) => {
+    verifyAccess(user, 4).then((accounts) => {
+        console.log(accounts);
+    })
+})
+*/
 
