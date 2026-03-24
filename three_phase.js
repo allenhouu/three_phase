@@ -86,7 +86,7 @@ async function getUser(username)
 }
 
 
-async function getAccount(user)
+async function getAccounts(user)
 {
     if (user.access === 1) {
         const [results, fields] = await connection.query(`SELECT DISTINCT accounts.accountID, accounts.balance, accounts.accountType, accounts.ownerID FROM accounts`);
@@ -296,12 +296,7 @@ app.put("/data", (req, res) => {
 });
 
 app.get("/public_key", (req, res) => {
-    res.status(200).json({success: "Public key"});
-})
-
-app.get("/login", (req, res) => {
-    const [results, fields] = connection.query(`SELECT FROM accounts`);
-    res.status(200).json(results);
+    res.status(200).json({success: publicKey});
 })
 
 app.get("/data", (req, res) => {
@@ -361,21 +356,59 @@ app.get("/data", (req, res) => {
 
 
 app.get("/accounts", (req, res) => {
+    const {u, p, accountID} = req.query;
+
+    let encryptedUserName = urlSafeToBase64(u);
+    let encryptedPassword = urlSafeToBase64(p);
+    if (!encryptedUserName || !encryptedPassword) {
+        return res.status(400).json({error: "Invalid query parameters"})
+    }
+
+    let decryptedUser = decryptData(encryptedUserName);
+    let decryptedPassword = decryptData(encryptedPassword);
+
+    getUser(decryptedUser).then((user) => {
+        verifyPassword(decryptedPassword, user.salt, user.hashed, () => {
+            getAccounts(accountID).then((accounts) => {
+                return res.status(200).json({success: accounts})
+            })
+        }, () => {
+            return res.status(400).json({error: decryptedUser});
+        })
+    })
 
 })
 
 app.get("/transactions", (req, res) => {
+    const {u, p, accountID} = req.query;
 
+    let encryptedUserName = urlSafeToBase64(u);
+    let encryptedPassword = urlSafeToBase64(p);
+    if (!encryptedUserName || !encryptedPassword) {
+        return res.status(400).json({error: "Invalid query parameters"})
+    }
+
+    let decryptedUser = decryptData(encryptedUserName);
+    let decryptedPassword = decryptData(encryptedPassword);
+    getUser(decryptedUser).then((user) => {
+        verifyPassword(decryptedPassword, user.salt, user.hashed, () => {
+            getTransactions(accountID).then((transaction) => {
+                return res.status(200).json({success: transaction})
+            })
+        }, () => {
+            return res.status(400).json({error: decryptedUser});
+        })
+    })
 })
 
 app.post("/login", (req, res) => {
-    const { encryptedUsername, encryptedPassword } = req.body;
-    if (!encryptedUsername || !encryptedPassword)
+    const { encryptedUserName, encryptedPassword } = req.body;
+    if (!encryptedUserName || !encryptedPassword)
     {
         return res.status(400).json({error: "Username or Password required"});
     }
 
-    let decryptedUsername = decryptData(encryptedUsername);
+    let decryptedUsername = decryptData(encryptedUserName);
     let decryptedPassword = decryptData(encryptedPassword);
 
 
