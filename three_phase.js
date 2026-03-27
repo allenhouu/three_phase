@@ -408,19 +408,106 @@ app.post("/login", (req, res) => {
         return res.status(400).json({error: "Username or Password required"});
     }
 
-    let decryptedUsername = decryptData(encryptedUserName);
+    let decryptedUser = decryptData(encryptedUserName);
     let decryptedPassword = decryptData(encryptedPassword);
 
-
+    getUser(decryptedUser).then((user) => {
+        if (user === false)
+        {
+            createUser(decryptedUser, decryptedPassword). then((user) => {
+                return res.status(200).json({success: "User created"});
+            })
+        }
+        else
+        {
+            return res.status(400).json({error: "User already exists"});
+        }
+    })
 })
 
-app.post("/accounts", (req, res) => {})
+app.post("/account", (req, res) => {
+    const { encryptedUserName, encryptedPassword, accountType } = req.body;
+    if (!encryptedUserName || !encryptedPassword)
+    {
+        return res.status(400).json({error: "Username or Password required"});
+    }
 
-app.post("/deposit", (req, res) => {})
+    let decryptedUser = decryptData(encryptedUserName);
+    let decryptedPassword = decryptData(encryptedPassword);
 
-app.post("/withdraw", (req, res) => {})
+    getUser(decryptedUser).then((user) => {
+        verifyPassword(decryptedPassword, user.salt, user.hashed, () => {
+            createAccount(accountType, user.ownerID).then((account) => {
+                return res.status(200).json({success: "Account created"});
+            })
+        }, () => {
+            return res.status(400).json({error: "Unable to create account"});
+        })
+    })
+})
 
-app.post("/transfer", (req, res) => {})
+app.post("/deposit", (req, res) => {
+    const { encryptedUserName, encryptedPassword, accountID, amount } = req.body;
+    if (!encryptedUserName || !encryptedPassword || !accountID || !amount)
+    {
+        return res.status(400).json({error: "Username, Password, AccountID, or Amount required"});
+    }
+
+    let decryptedUser = decryptData(encryptedUserName);
+    let decryptedPassword = decryptData(encryptedPassword);
+
+    getUser(decryptedUser).then((user) => {
+        verifyPassword(decryptedPassword, user.salt, user.hashed, () => {
+            deposit(decryptedUser, accountID, amount).then((account) => {
+                return res.status(200).json({success: account});
+            })
+        }, () => {
+            return res.status(400).json({error: decryptedUser});
+        })
+    })
+})
+
+app.post("/withdraw", (req, res) => {
+    const { encryptedUserName, encryptedPassword, accountID, amount } = req.body;
+    if (!encryptedUserName || !encryptedPassword || !accountID || !amount)
+    {
+        return res.status(400).json({error: "Username, Password, AccountID, or Amount required"});
+    }
+
+    let decryptedUser = decryptData(encryptedUserName);
+    let decryptedPassword = decryptData(encryptedPassword);
+
+    getUser(decryptedUser).then((user) => {
+        verifyPassword(decryptedPassword, user.salt, user.hashed, () => {
+            withdraw(decryptedUser, accountID, amount).then((account) => {
+                return res.status(200).json({success: account});
+            })
+        }, () => {
+            return res.status(400).json({error: decryptedUser});
+        })
+    })
+})
+
+app.post("/transfer", (req, res) => {
+    const { encryptedUserName, encryptedPassword, fromAccountID, toAccountID, amount } = req.body;
+    if (!encryptedUserName || !encryptedPassword || !fromAccountID || !toAccountID|| !amount)
+    {
+        return res.status(400).json({error: "Username, Password, fromAccountID, toAccountID,  or Amount required"});
+    }
+
+    let decryptedUser = decryptData(encryptedUserName);
+    let decryptedPassword = decryptData(encryptedPassword);
+
+    getUser(decryptedUser).then((user) => {
+        verifyPassword(decryptedPassword, user.salt, user.hashed, () => {
+            transfer(decryptedUser, fromAccountID, toAccountID, amount).then((account) => {
+                return res.status(200).json({success: account});
+            })
+        }, () => {
+            return res.status(400).json({error: decryptedUser});
+        })
+    })
+})
 
 
 
