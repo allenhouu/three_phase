@@ -99,7 +99,7 @@ async function getAccounts(user)
 
 async function getTransactions(accountID)
 {
-    const [results, fields] = await connection.query(`SELECT DISTINCT transactions.transactionID, transactions.amount, transactions.fromAcc, transactions.toAcc FROM transactions WHERE transactions.toAcc = "${accountID}" OR transaction.fromAcc = "${accountID}"`);
+    const [results, fields] = await connection.query(`SELECT transactions.transactionID, transactions.amount, transactions.fromAcc, transactions.toAcc FROM transactions WHERE transactions.toAcc = "${accountID}" OR transaction.fromAcc = "${accountID}"`);
     return results;
 }
 
