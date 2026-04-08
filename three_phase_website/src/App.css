@@ -201,9 +201,13 @@
 #password {
   display: flex;
   justify-content: center;
-  padding-top: 50px;
 }
 
 #username #password {
   display: inline-block;
+}
+
+buttons {
+  display: flex;
+  justify-content: center;
 }
