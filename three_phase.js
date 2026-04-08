@@ -148,10 +148,10 @@ async function createAccount(type, ownerID)
 
 async function verifyAccess(user, accountID)
 {
-    const [results, fields] = await connection.query(`SELECT DISTINCT * FROM accounts WHERE accountID = ${accountID}`);
     if(user.access === 1 ) {
         return true;
     }
+    const [results, fields] = await connection.query(`SELECT DISTINCT * FROM accounts WHERE accountID = ${accountID}`);
     if (results.length > 0 && user.id === results[0].ownerID) {
         return true;
     }
