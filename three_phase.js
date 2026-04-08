@@ -458,11 +458,17 @@ app.post("/deposit", (req, res) => {
 
     getUser(decryptedUser).then((user) => {
         verifyPassword(decryptedPassword, user.salt, user.hashed, () => {
-            deposit(decryptedUser, accountID, amount).then((account) => {
-                return res.status(200).json({success: account});
+            deposit(decryptedUser, accountID, amount).then((a) => {
+                if (a === 403) {
+                    return res.status(a).json({error: "Access Denied: Admin Only"})
+                }
+                else {
+                    return res.status(200).json({success: "Deposit successful"});
+                }
+
             })
         }, () => {
-            return res.status(400).json({error: decryptedUser});
+            return res.status(400).json({error: "Username or password is incorrect"});
         })
     })
 })
@@ -479,11 +485,17 @@ app.post("/withdraw", (req, res) => {
 
     getUser(decryptedUser).then((user) => {
         verifyPassword(decryptedPassword, user.salt, user.hashed, () => {
-            withdraw(decryptedUser, accountID, amount).then((account) => {
-                return res.status(200).json({success: account});
+            withdraw(decryptedUser, accountID, amount).then((a) => {
+                if (a === 403) {
+                    return res.status(a).json({error: "Access Denied: Admin Only"})
+                }
+                else {
+                    return res.status(200).json({success: "Withdraw successful"});
+                }
+
             })
         }, () => {
-            return res.status(400).json({error: decryptedUser});
+            return res.status(400).json({error: "Username or password is incorrect"});
         })
     })
 })
@@ -500,11 +512,20 @@ app.post("/transfer", (req, res) => {
 
     getUser(decryptedUser).then((user) => {
         verifyPassword(decryptedPassword, user.salt, user.hashed, () => {
-            transfer(decryptedUser, fromAccountID, toAccountID, amount).then((account) => {
-                return res.status(200).json({success: account});
+            transfer(decryptedUser, fromAccountID, toAccountID, amount).then((a) => {
+                if (a === 403) {
+                    return res.status(a).json({error: "Access Denied: You do not have access to at least one of these bank accounts"})
+                }
+                else if (a === 400) {
+                    return res.status(a).json({error: "Transfer Unsuccessful: Insufficient funds"})
+                }
+                else {
+                    return res.status(200).json({success: "Transfer successful"});
+                }
+
             })
         }, () => {
-            return res.status(400).json({error: decryptedUser});
+            return res.status(400).json({error: "Username or password is incorrect"});
         })
     })
 })
