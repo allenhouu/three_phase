@@ -368,6 +368,10 @@ app.get("/accounts", (req, res) => {
     let decryptedPassword = decryptData(encryptedPassword);
 
     getUser(decryptedUser).then((user) => {
+        if (user === false)
+        {
+            return res.status(400).json({error: "User not found"});
+        }
         verifyPassword(decryptedPassword, user.salt, user.hashed, () => {
             getAccounts(accountID).then((accounts) => {
                 return res.status(200).json({success: accounts})
@@ -391,12 +395,22 @@ app.get("/transactions", (req, res) => {
     let decryptedUser = decryptData(encryptedUserName);
     let decryptedPassword = decryptData(encryptedPassword);
     getUser(decryptedUser).then((user) => {
+        if (user === false)
+        {
+            return res.status(400).json({error: "User not found"});
+        }
         verifyPassword(decryptedPassword, user.salt, user.hashed, () => {
-            getTransactions(accountID).then((transaction) => {
-                return res.status(200).json({success: transaction})
+            verifyAccess(user, accountID).then((hasAccess) => {
+                if (!hasAccess)
+                {
+                    return res.status(400).json({error: "Access Denied"})
+                }
+                getTransactions(accountID).then((transaction) => {
+                    return res.status(200).json({success: transaction})
+                })
             })
         }, () => {
-            return res.status(400).json({error: decryptedUser});
+            return res.status(400).json({error: "Username or Password incorrect"});
         })
     })
 })
@@ -436,8 +450,12 @@ app.post("/account", (req, res) => {
     let decryptedPassword = decryptData(encryptedPassword);
 
     getUser(decryptedUser).then((user) => {
+        if (user === false)
+        {
+            return res.status(400).json({error: "User not found"});
+        }
         verifyPassword(decryptedPassword, user.salt, user.hashed, () => {
-            createAccount(accountType, user.ownerID).then((account) => {
+            createAccount(accountType, user.id).then((account) => {
                 return res.status(200).json({success: "Account created"});
             })
         }, () => {
@@ -457,8 +475,12 @@ app.post("/deposit", (req, res) => {
     let decryptedPassword = decryptData(encryptedPassword);
 
     getUser(decryptedUser).then((user) => {
+        if (user === false)
+        {
+            return res.status(400).json({error: "User not found"});
+        }
         verifyPassword(decryptedPassword, user.salt, user.hashed, () => {
-            deposit(decryptedUser, accountID, amount).then((a) => {
+            deposit(user, accountID, amount).then((a) => {
                 if (a === 403) {
                     return res.status(a).json({error: "Access Denied: Admin Only"})
                 }
@@ -484,8 +506,12 @@ app.post("/withdraw", (req, res) => {
     let decryptedPassword = decryptData(encryptedPassword);
 
     getUser(decryptedUser).then((user) => {
+        if (user === false)
+        {
+            return res.status(400).json({error: "User not found"});
+        }
         verifyPassword(decryptedPassword, user.salt, user.hashed, () => {
-            withdraw(decryptedUser, accountID, amount).then((a) => {
+            withdraw(user, accountID, amount).then((a) => {
                 if (a === 403) {
                     return res.status(a).json({error: "Access Denied: Admin Only"})
                 }
@@ -511,8 +537,12 @@ app.post("/transfer", (req, res) => {
     let decryptedPassword = decryptData(encryptedPassword);
 
     getUser(decryptedUser).then((user) => {
+        if (user === false)
+        {
+            return res.status(400).json({error: "User not found"});
+        }
         verifyPassword(decryptedPassword, user.salt, user.hashed, () => {
-            transfer(decryptedUser, fromAccountID, toAccountID, amount).then((a) => {
+            transfer(user, fromAccountID, toAccountID, amount).then((a) => {
                 if (a === 403) {
                     return res.status(a).json({error: "Access Denied: You do not have access to at least one of these bank accounts"})
                 }
